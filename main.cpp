@@ -7,6 +7,7 @@ int wmain(int argc, wchar_t** argv, wchar_t** evnp)
 #endif
 
 	RenderManager render(960, 540);
+
 	render.Run();
 
 	return 0;

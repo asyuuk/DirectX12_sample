@@ -2,7 +2,9 @@
 #include"pch.h"
 #include"FIleUtil.h"
 #include<list>
+#include"Input.h"
 
+class Input;
 
 namespace
 {
@@ -56,6 +58,9 @@ public:
 	bool InitWindow();
 	void TermWnd();
 	bool LoadImages(const wchar_t* filename,int i);
+
+	bool LoadDivImages(const wchar_t* filename, int i, int num);//一枚の画像を読み込みメモリーにヒープさせる。それを小分けにしてメモリーに分配する。元の画像はリリースする。
+
 	bool Load();
 
 	bool RootSignature();
@@ -128,6 +133,11 @@ public:
 	std::vector<Texture>textures;
 	Texture texture;
 	float m_Rotate;
+	//プレイヤー敵などの情報：位置
+	float x;//player_x;
+	float y;//player_y;
+
+	std::shared_ptr<Input>input;
 
 
 

@@ -11,6 +11,7 @@ RenderManager::RenderManager(uint32_t width, uint32_t height) :m_hInst(nullptr),
 		m_CommandAllocator[i] = nullptr;
 		m_FenceCounter[i] = 0;
 	}
+	input = std::make_unique<Input>(m_hWnd);
 }
 RenderManager::~RenderManager()
 {
@@ -743,6 +744,11 @@ bool RenderManager::Pipelinestate()
 
 }
 
+bool RenderManager::LoadDivImages(const wchar_t* filename, int i, int num)
+{
+	return true;
+}
+
 bool RenderManager::LoadImages(const wchar_t* filename,int i)
 {
 	
@@ -935,6 +941,7 @@ void RenderManager::MainLoop()
 		}
 		else
 		{
+			Update();
 			Render();
 		}
 	}
@@ -988,7 +995,6 @@ void RenderManager::DrawImage()
 }
 void RenderManager::Render()
 {
-	Update();
 	DrawUI();
 	SetResourceBarrier(m_CommandList, m_pColorBuffer[m_FrameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
 	m_CommandList->OMSetRenderTargets(1, &m_HandleRTV[m_FrameIndex], FALSE, nullptr);
@@ -1022,10 +1028,15 @@ void RenderManager::DrawUI()
 
 void RenderManager::Update()
 {
-	m_Rotate += 0.01f;
-	
 
-	m_CBV[m_FrameIndex][0].pBuffer->World = DirectX::XMMatrixTranslation(2,0,0);
+	if (input->InputA())
+	{
+		x += 0.01f;
+	}
+	std::cout << x << std::endl;
+	std::cout << y << std::endl;
+
+	m_CBV[m_FrameIndex][0].pBuffer->World = DirectX::XMMatrixTranslation(x,y,0);
 	m_CBV[m_FrameIndex][1].pBuffer->World = DirectX::XMMatrixTranslation(-2, 0, 0);
 
 }
