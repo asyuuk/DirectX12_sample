@@ -12,6 +12,8 @@
 #include<d3dcompiler.h>
 #include<VertexTypes.h>
 #include<vector>
+#include<string>
+#include<fstream>
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")

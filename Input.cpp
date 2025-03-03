@@ -175,23 +175,17 @@ float Input::InputPad_X()
 		state.Gamepad.sThumbLX > -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
 	{
 		state.Gamepad.sThumbLX = 0;
+		strokeX = 0;
 	}
-	if (state.Gamepad.sThumbLY < XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE &&
-		state.Gamepad.sThumbLY > -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
-	{
-		state.Gamepad.sThumbLY = 0;
-	}
+	
 
 	if (state.Gamepad.sThumbRX < XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE &&
 		state.Gamepad.sThumbRX > -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
 	{
 		state.Gamepad.sThumbRX = 0;
+		strokeX = 0;
 	}
-	if (state.Gamepad.sThumbRY < XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE &&
-		state.Gamepad.sThumbRY > -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
-	{
-		state.Gamepad.sThumbRY = 0;
-	}
+	
 
 
 	//スティックの入力
@@ -199,22 +193,25 @@ float Input::InputPad_X()
 	{
 		strokeX = 0.01f;
 	}
+	
 
 	if (state.Gamepad.sThumbLX <= -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
 	{
 		strokeX = -0.01f;
 	}
-
 	
-
-	if(state.Gamepad.sThumbRX >= XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
-	{
-		strokeX = 0.01f;
-	}
-	if (state.Gamepad.sThumbRX <= -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
+	if (state.Gamepad.sThumbRX >= XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
 	{
 		strokeX = -0.01f;
 	}
+	
+	if (state.Gamepad.sThumbRX <= -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
+	{
+		strokeX = 0.01f;
+	}
+	
+	
+
 	
 
 	return strokeX;
@@ -227,26 +224,20 @@ float Input::InputPad_Y()
 	XInputGetState(0, &state);
 
 	//デッドゾーン
-	if (state.Gamepad.sThumbLX < XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE &&
-		state.Gamepad.sThumbLX > -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
-	{
-		state.Gamepad.sThumbLX = 0;
-	}
+	
 	if (state.Gamepad.sThumbLY < XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE &&
 		state.Gamepad.sThumbLY > -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
 	{
 		state.Gamepad.sThumbLY = 0;
+		strokeY = 0;
 	}
 
-	if (state.Gamepad.sThumbRX < XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE &&
-		state.Gamepad.sThumbRX > -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
-	{
-		state.Gamepad.sThumbRX = 0;
-	}
+	
 	if (state.Gamepad.sThumbRY < XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE &&
 		state.Gamepad.sThumbRY > -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
 	{
 		state.Gamepad.sThumbRY = 0;
+		strokeY = 0;
 	}
 
 
@@ -254,21 +245,25 @@ float Input::InputPad_Y()
 	{
 		strokeY = 0.01f;
 	}
-
+	
 	if (state.Gamepad.sThumbLY <= -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
 	{
 		strokeY = -0.01f;
 	}
-
-
+	
 	if (state.Gamepad.sThumbRY >= XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
 	{
 		strokeY = 0.01f;
 	}
+	
 	if (state.Gamepad.sThumbRY <= -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
 	{
 		strokeY = -0.01f;
 	}
+	
+
+
+	
 
 	return strokeY;
 }

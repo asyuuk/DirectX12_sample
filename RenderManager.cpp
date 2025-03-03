@@ -30,6 +30,20 @@ void RenderManager::Run()
 
 bool RenderManager::InitApp()
 {
+	if (!InitD3D12())
+	{
+		return false;
+	}
+	if (!InitImage())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool RenderManager::InitD3D12()
+{
 	if (!InitWindow())
 	{
 		return false;
@@ -38,6 +52,12 @@ bool RenderManager::InitApp()
 	{
 		return false;
 	}
+	return true;
+}
+
+bool RenderManager::InitImage()
+{
+	
 	if (!Load())
 	{
 		return false;
@@ -55,6 +75,28 @@ bool RenderManager::InitApp()
 		return false;
 	}
 	if (!LoadImages(L"E:/clip studio/pngフォルダ　自分用　高画質/02.png",1))
+	{
+		return false;
+	}
+	ViewPortScissor();
+	return true;
+}
+
+ bool RenderManager::DivImages()
+{
+	if (!DivVertexs(2, 2))
+	{
+		return false;;
+	}
+	if (RootSignature())
+	{
+		return false ;
+	}
+	if (Pipelinestate())
+	{
+		return false;
+	}
+	if (!LoadImages(L"E:/clip studio/pngフォルダ　自分用　高画質/abya.png", 0))
 	{
 		return false;
 	}
@@ -323,68 +365,134 @@ bool RenderManager::InitD3D()
 	return true;
 }
 
+bool RenderManager::VertexBuffer_05()
+{
+
+	//頂点データ
+
+	DirectX::VertexPositionTexture vertices_05[] = {
+			DirectX::VertexPositionTexture(DirectX::XMFLOAT3(-0.5f,  0.5f, 0.0f), DirectX::XMFLOAT2(0.0f, 0.0f)),
+			DirectX::VertexPositionTexture(DirectX::XMFLOAT3(0.5f,  0.5f, 0.0f), DirectX::XMFLOAT2(0.5f, 0.0f)),
+			DirectX::VertexPositionTexture(DirectX::XMFLOAT3(0.5f, -0.5f, 0.0f), DirectX::XMFLOAT2(0.5f, 0.5f)),
+			DirectX::VertexPositionTexture(DirectX::XMFLOAT3(-0.5f, -0.5f, 0.0f), DirectX::XMFLOAT2(0.0f, 0.5f))
+	};
+
+	//ヒーププロパティ
+	D3D12_HEAP_PROPERTIES prop = {};
+	prop.Type = D3D12_HEAP_TYPE_UPLOAD;
+	prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	prop.CreationNodeMask = 1;
+	prop.VisibleNodeMask = 1;
+	//リソースの設定
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	desc.Alignment = 0;
+	desc.Width = sizeof(vertices_05);
+	desc.Height = 1;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = 1;
+	desc.Format = DXGI_FORMAT_UNKNOWN;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+
+	auto hr = m_device->CreateCommittedResource(
+		&prop,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_pVB.GetAddressOf())
+	);
+	if (FAILED(hr))
+	{
+		return false;
+	}
+	//マッピング
+	void* ptr = nullptr;
+	hr = m_pVB->Map(0, nullptr, &ptr);
+	if (FAILED(hr))
+	{
+		return false;
+	}
+	memcpy(ptr, vertices_05, sizeof(vertices_05));
+
+	m_pVB->Unmap(0, nullptr);
+
+	m_VBV.BufferLocation = m_pVB->GetGPUVirtualAddress();
+	m_VBV.SizeInBytes = static_cast<UINT>(sizeof(vertices_05));
+	m_VBV.StrideInBytes = static_cast<UINT>(sizeof(DirectX::VertexPositionTexture));
+}
+
+bool RenderManager::VertexBuffer_10()
+{
+	//頂点データ
+
+	DirectX::VertexPositionTexture vertices[] = {
+		DirectX::VertexPositionTexture(DirectX::XMFLOAT3(-1.0f,  1.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 0.0f)),
+		DirectX::VertexPositionTexture(DirectX::XMFLOAT3(1.0f,  1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 0.0f)),
+		DirectX::VertexPositionTexture(DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f)),
+		DirectX::VertexPositionTexture(DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 1.0f))
+	};
+
+	//ヒーププロパティ
+	D3D12_HEAP_PROPERTIES prop = {};
+	prop.Type = D3D12_HEAP_TYPE_UPLOAD;
+	prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	prop.CreationNodeMask = 1;
+	prop.VisibleNodeMask = 1;
+	//リソースの設定
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	desc.Alignment = 0;
+	desc.Width = sizeof(vertices);
+	desc.Height = 1;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = 1;
+	desc.Format = DXGI_FORMAT_UNKNOWN;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+
+	auto hr = m_device->CreateCommittedResource(
+		&prop,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_pVB.GetAddressOf())
+	);
+	if (FAILED(hr))
+	{
+		return false;
+	}
+	//マッピング
+	void* ptr = nullptr;
+	hr = m_pVB->Map(0, nullptr, &ptr);
+	if (FAILED(hr))
+	{
+		return false;
+	}
+	memcpy(ptr, vertices, sizeof(vertices));
+
+	m_pVB->Unmap(0, nullptr);
+
+	m_VBV.BufferLocation = m_pVB->GetGPUVirtualAddress();
+	m_VBV.SizeInBytes = static_cast<UINT>(sizeof(vertices));
+	m_VBV.StrideInBytes = static_cast<UINT>(sizeof(DirectX::VertexPositionTexture));
+}
 
 bool RenderManager::Load()
 {
 	//頂点バッファの生成
 	{
-		//頂点データ
-		
-		DirectX::VertexPositionTexture vertices[] = {
-			DirectX::VertexPositionTexture(DirectX::XMFLOAT3(-1.0f,  1.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 0.0f)),
-			DirectX::VertexPositionTexture(DirectX::XMFLOAT3(1.0f,  1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 0.0f)),
-			DirectX::VertexPositionTexture(DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f)),
-			DirectX::VertexPositionTexture(DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 1.0f))
-		};
-
-		//ヒーププロパティ
-		D3D12_HEAP_PROPERTIES prop = {};
-		prop.Type = D3D12_HEAP_TYPE_UPLOAD;
-		prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		prop.CreationNodeMask = 1;
-		prop.VisibleNodeMask = 1;
-		//リソースの設定
-		D3D12_RESOURCE_DESC desc = {};
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Alignment = 0;
-		desc.Width = sizeof(vertices);
-		desc.Height = 1;
-		desc.DepthOrArraySize = 1;
-		desc.MipLevels = 1;
-		desc.Format = DXGI_FORMAT_UNKNOWN;
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-
-		auto hr = m_device->CreateCommittedResource(
-			&prop,
-			D3D12_HEAP_FLAG_NONE,
-			&desc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_pVB.GetAddressOf())
-		);
-		if (FAILED(hr))
-		{
-			return false;
-		}
-		//マッピング
-		void* ptr = nullptr;
-		hr = m_pVB->Map(0, nullptr, &ptr);
-		if (FAILED(hr))
-		{
-			return false;
-		}
-		memcpy(ptr, vertices, sizeof(vertices));
-
-		m_pVB->Unmap(0, nullptr);
-
-		m_VBV.BufferLocation = m_pVB->GetGPUVirtualAddress();
-		m_VBV.SizeInBytes = static_cast<UINT>(sizeof(vertices));
-		m_VBV.StrideInBytes = static_cast<UINT>(sizeof(DirectX::VertexPositionTexture));
+		VertexBuffer_10();
 	}
 	//インデックスバッファの生成
 	{
@@ -549,6 +657,8 @@ bool RenderManager::Load()
 	}
 	return true;
 }
+
+
 
 bool RenderManager::RootSignature()
 {
@@ -744,10 +854,144 @@ bool RenderManager::Pipelinestate()
 
 }
 
-bool RenderManager::LoadDivImages(const wchar_t* filename, int i, int num)
+bool RenderManager::DivVertexs(int rows, int cols)
 {
+
+	float cellWidth = 2.0f / cols;
+	float cellHeight = 2.0f / rows;
+	float uvWidth = 1.0f / cols;
+	float uvHeight = 1.0f / rows;
+
+	for (int y = 0; y < rows; ++y)
+	{
+		for (int x = 0; x < cols; ++x)
+		{
+			float left = -1.0f + cellWidth * x;
+			float right = left + cellWidth;
+			float top = 1.0f - cellHeight * y;
+			float bottom = top - cellHeight;
+
+			float uvLeft = uvWidth * x;
+			float uvRight = uvLeft + uvWidth;
+			float uvTop = uvHeight * y;
+			float uvBottom = uvTop + uvHeight;
+
+			vertices.push_back(DirectX::VertexPositionTexture(DirectX::XMFLOAT3(left, top, 0.0f), DirectX::XMFLOAT2(uvLeft, uvTop)));
+			vertices.push_back(DirectX::VertexPositionTexture(DirectX::XMFLOAT3(right, top, 0.0f), DirectX::XMFLOAT2(uvRight, uvTop)));
+			vertices.push_back(DirectX::VertexPositionTexture(DirectX::XMFLOAT3(right, bottom, 0.0f), DirectX::XMFLOAT2(uvRight, uvBottom)));
+			vertices.push_back(DirectX::VertexPositionTexture(DirectX::XMFLOAT3(left, bottom, 0.0f), DirectX::XMFLOAT2(uvLeft, uvBottom)));
+		}
+	}
+
+	D3D12_HEAP_PROPERTIES prop = {};
+	prop.Type = D3D12_HEAP_TYPE_UPLOAD;
+	prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	prop.CreationNodeMask = 1;
+	prop.VisibleNodeMask = 1;
+
+	//リソースの設定
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	desc.Alignment = 0;
+	desc.Width = sizeof(DirectX::VertexPositionTexture) * vertices.size();
+	desc.Height = 1;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = 1;
+	desc.Format = DXGI_FORMAT_UNKNOWN;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	auto hr = m_device->CreateCommittedResource(
+		&prop,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_pVB.GetAddressOf())
+	);
+	if (FAILED(hr))
+	{
+		return false;
+	}
+	//マッピング
+	void* ptr = nullptr;
+	hr = m_pVB->Map(0, nullptr, &ptr);
+	if (FAILED(hr))
+	{
+		return false;
+	}
+	memcpy(ptr, vertices.data(), sizeof(DirectX::VertexPositionTexture) * vertices.size());
+	m_pVB->Unmap(0, nullptr);
+
+	m_VBV.BufferLocation = m_pVB->GetGPUVirtualAddress();
+	m_VBV.SizeInBytes = static_cast<UINT>(sizeof(DirectX::VertexPositionTexture) * vertices.size());
+	m_VBV.StrideInBytes = static_cast<UINT>(sizeof(DirectX::VertexPositionTexture));
+
+	
+
+	//インデックスバッファの生成
+	{
+
+		for (int y = 0; y < rows; y++)
+		{
+			for (int x = 0; x < cols; x++)
+			{
+				int index = x + y * cols;
+				indices.push_back(index * 4 + 0);
+				indices.push_back(index * 4 + 1);
+				indices.push_back(index * 4 + 2);
+				indices.push_back(index * 4 + 0);
+				indices.push_back(index * 4 + 2);
+				indices.push_back(index * 4 + 3);
+			}
+		}
+		//ヒーププロパティ
+		D3D12_HEAP_PROPERTIES prop = {};
+		prop.Type = D3D12_HEAP_TYPE_UPLOAD;
+		prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		prop.CreationNodeMask = 1;
+		prop.VisibleNodeMask = 1;
+		//リソースの設定
+		D3D12_RESOURCE_DESC desc = {};
+		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		desc.Alignment = 0;
+		desc.Width = sizeof(uint32_t) * indices.size();
+		desc.Height = 1;
+		desc.DepthOrArraySize = 1;
+		desc.MipLevels = 1;
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		auto hr = m_device->CreateCommittedResource(
+			&prop,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_pIB.GetAddressOf())
+		);
+		//マッピングする
+		void* ptr = nullptr;
+		hr = m_pIB->Map(0, nullptr, &ptr);
+		if (FAILED(hr))
+		{
+			return false;
+		}
+		memcpy(ptr, indices.data(), sizeof(uint32_t) * indices.size());
+		m_pIB->Unmap(0, nullptr);
+		m_IBV.BufferLocation = m_pIB->GetGPUVirtualAddress();
+		m_IBV.Format = DXGI_FORMAT_R32_UINT;
+		m_IBV.SizeInBytes = sizeof(uint32_t) * indices.size();
+	}
 	return true;
 }
+
 
 bool RenderManager::LoadImages(const wchar_t* filename,int i)
 {
@@ -1033,6 +1277,10 @@ void RenderManager::Update()
 	{
 		x += 0.01f;
 	}
+
+	x += input->InputPad_X();
+	y += input->InputPad_Y();	
+	
 	std::cout << x << std::endl;
 	std::cout << y << std::endl;
 

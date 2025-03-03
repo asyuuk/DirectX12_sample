@@ -6,6 +6,9 @@
 
 class Input;
 
+
+
+
 namespace
 {
 	const auto ClassName = TEXT("sample");
@@ -59,9 +62,13 @@ public:
 	void TermWnd();
 	bool LoadImages(const wchar_t* filename,int i);
 
-	bool LoadDivImages(const wchar_t* filename, int i, int num);//一枚の画像を読み込みメモリーにヒープさせる。それを小分けにしてメモリーに分配する。元の画像はリリースする。
+	bool DivVertexs(int rows,int cols);
 
+	bool LoadVertexs();
 	bool Load();
+
+	bool VertexBuffer_05();
+	bool VertexBuffer_10();
 
 	bool RootSignature();
 	bool Pipelinestate();
@@ -70,6 +77,10 @@ public:
 	void Present(uint32_t interval);
 	void Render();
 
+	bool InitImage();
+
+	bool InitD3D12();
+
 	void PreDraw();
 
 	void DrawImage();
@@ -77,6 +88,8 @@ public:
 	void Update();
 
 	void DrawUI();
+
+	bool DivImages();
 
 
 	void SetPipelineState();
@@ -139,9 +152,14 @@ public:
 
 	std::shared_ptr<Input>input;
 
+	DirectX::XMFLOAT4* m_pRect;
 
 
 	static const unsigned int SRVDescriptorMax = 10000;
+
+	std::vector<DirectX::VertexPositionTexture> vertices;
+
+	std::vector<uint32_t> indices;
 	
 	static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 };
