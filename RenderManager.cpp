@@ -3,7 +3,7 @@
 
 
 
-RenderManager::RenderManager(uint32_t width, uint32_t height) :m_hInst(nullptr), m_hWnd(nullptr), m_Width(width), m_Height(height), m_FrameIndex(0)
+RenderManager::RenderManager(uint32_t width, uint32_t height) :m_hInst(nullptr), m_hWnd(nullptr), m_Width(width), m_Height(height), m_FrameIndex(0), m_CurrentFrame(0), m_Rotate(0.0f), x(0.0f), y(0.0f)
 {
 	for (auto i = 0; i < FrameCount; ++i)
 	{
@@ -39,6 +39,8 @@ bool RenderManager::InitApp()
 		return false;
 	}
 
+	
+
 	return true;
 }
 
@@ -62,6 +64,18 @@ bool RenderManager::InitImage()
 	{
 		return false;
 	}
+
+	if (!HeapRTV_SRV_UAV())
+	{
+		return false;
+	}
+
+	if (!ConstantBufferViews())
+	{
+		return false;
+	}
+
+	
 	if (!RootSignature())
 	{
 		return false;
@@ -70,11 +84,17 @@ bool RenderManager::InitImage()
 	{
 		return false;
 	}
-	if (!LoadImages(L"E:/clip studio/pngフォルダ　自分用　高画質/abya.png",0))
+	if (!DivImages())
 	{
 		return false;
 	}
-	if (!LoadImages(L"E:/clip studio/pngフォルダ　自分用　高画質/02.png",1))
+	
+	return true;
+}
+
+ bool RenderManager::DivImages()
+{
+	if (!CreateTextureFromPng(L"E:/clip studio/pngフォルダ　自分用　高画質/02.png",1))
 	{
 		return false;
 	}
@@ -82,27 +102,15 @@ bool RenderManager::InitImage()
 	return true;
 }
 
- bool RenderManager::DivImages()
-{
-	if (!DivVertexs(2, 2))
-	{
-		return false;;
-	}
-	if (RootSignature())
-	{
-		return false ;
-	}
-	if (Pipelinestate())
-	{
-		return false;
-	}
-	if (!LoadImages(L"E:/clip studio/pngフォルダ　自分用　高画質/abya.png", 0))
-	{
-		return false;
-	}
-	ViewPortScissor();
-	return true;
-}
+ bool RenderManager::Images()
+ {
+	 if (!LoadImages(L"E:/clip studio/pngフォルダ　自分用　高画質/02.png", 0))
+	 {
+		 return false;
+	 }
+	 ViewPortScissor();
+	 return true;
+ }
 
 void RenderManager::TermApp()
 {
@@ -425,6 +433,8 @@ bool RenderManager::VertexBuffer_05()
 	m_VBV.BufferLocation = m_pVB->GetGPUVirtualAddress();
 	m_VBV.SizeInBytes = static_cast<UINT>(sizeof(vertices_05));
 	m_VBV.StrideInBytes = static_cast<UINT>(sizeof(DirectX::VertexPositionTexture));
+
+	return true;
 }
 
 bool RenderManager::VertexBuffer_10()
@@ -486,6 +496,127 @@ bool RenderManager::VertexBuffer_10()
 	m_VBV.BufferLocation = m_pVB->GetGPUVirtualAddress();
 	m_VBV.SizeInBytes = static_cast<UINT>(sizeof(vertices));
 	m_VBV.StrideInBytes = static_cast<UINT>(sizeof(DirectX::VertexPositionTexture));
+	return true;
+}
+
+bool RenderManager::LoadDivImages(const wchar_t* filename, int rows, int cols)
+{
+	
+	if (!LoadImages(filename, 6))
+	{
+		return false;
+	}
+	if (!DivVertexs(rows, cols))
+	{
+		return false;
+	}
+	ViewPortScissor();
+	return true;
+}
+
+bool RenderManager::ConstantBufferViews()
+{
+	//ヒーププロパティ
+	D3D12_HEAP_PROPERTIES prop = {};
+	prop.Type = D3D12_HEAP_TYPE_UPLOAD;
+	prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	prop.CreationNodeMask = 1;
+	prop.VisibleNodeMask = 1;
+
+	//リソースの設定
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	desc.Alignment = 0;
+	desc.Width = sizeof(Transform);
+	desc.Height = 1;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = 1;
+	desc.Format = DXGI_FORMAT_UNKNOWN;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	auto incrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+
+	for (auto i = 0; i < FrameCount; ++i)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			auto hr = m_device->CreateCommittedResource(
+				&prop,
+				D3D12_HEAP_FLAG_NONE,
+				&desc,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(m_pCB[i].GetAddressOf())
+			);
+			if (FAILED(hr))
+			{
+				return false;
+			}
+			auto address = m_pCB[i]->GetGPUVirtualAddress();
+			auto handleCPU = m_pHeapCBV_SRV_UAV->GetCPUDescriptorHandleForHeapStart();
+			auto handleGPU = m_pHeapCBV_SRV_UAV->GetGPUDescriptorHandleForHeapStart();
+
+			handleCPU.ptr += incrementSize * i;
+			handleGPU.ptr += incrementSize * i;
+
+			m_CBV[i][j].HandleCPU = handleCPU;
+			m_CBV[i][j].HandleGPU = handleGPU;
+			m_CBV[i][j].Desc.BufferLocation = address;
+			m_CBV[i][j].Desc.SizeInBytes = sizeof(Transform);
+
+			m_device->CreateConstantBufferView(&m_CBV[i][j].Desc, handleCPU);
+
+			hr = m_pCB[i]->Map(0, nullptr, reinterpret_cast<void**>(&m_CBV[i][j].pBuffer));
+			if (FAILED(hr))
+			{
+
+				return false;
+			}
+
+			auto eyePos = DirectX::XMVectorSet(0.0f, 0.0f, 6.0f, 0.0f);
+			auto targetPos = DirectX::XMVectorZero();
+			auto upward = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+			auto fovY = DirectX::XMConvertToRadians(37.5);
+			auto aspect = static_cast<float>(m_Width) / static_cast<float>(m_Height);
+
+			m_CBV[i][j].pBuffer->World = DirectX::XMMatrixIdentity();
+			m_CBV[i][j].pBuffer->View = DirectX::XMMatrixLookAtRH(eyePos, targetPos, upward);
+			m_CBV[i][j].pBuffer->Proj = DirectX::XMMatrixPerspectiveFovRH(fovY, aspect, 1.0f, 1000.0f);
+		}
+	}
+
+	return true;
+
+
+}
+
+bool RenderManager::HeapRTV_SRV_UAV()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	desc.NumDescriptors = m_HeapSRVPoolMax;
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	desc.NodeMask = 0;
+
+	auto hr = m_device->CreateDescriptorHeap(
+		&desc,
+		IID_PPV_ARGS(m_pHeapCBV_SRV_UAV.GetAddressOf())
+	);
+	if (FAILED(hr))
+	{
+		return false;
+	}
+	for (int i = 0; i < m_HeapSRVPoolMax; i++)
+	{
+		m_HeapSRVPool.push_back(i);
+	}
+	return true;
 }
 
 bool RenderManager::Load()
@@ -493,6 +624,7 @@ bool RenderManager::Load()
 	//頂点バッファの生成
 	{
 		VertexBuffer_10();
+		
 	}
 	//インデックスバッファの生成
 	{
@@ -544,117 +676,8 @@ bool RenderManager::Load()
 
 	}
 
-	//CBV/SRV/UAV用ディスクリプタヒープの生成
-	{
-		
-			D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-			desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			desc.NumDescriptors = m_HeapSRVPoolMax;
-			desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-			desc.NodeMask = 0;
-
-			auto hr = m_device->CreateDescriptorHeap(
-				&desc,
-				IID_PPV_ARGS(m_pHeapCBV_SRV_UAV.GetAddressOf())
-			);
-			if (FAILED(hr))
-			{
-				return false;
-			}
-			for (int i = 0; i < m_HeapSRVPoolMax; i++)
-			{
-				m_HeapSRVPool.push_back(i);
-			}
-
-
-		
-			
-		
-	}
-	//定数バッファ
-	{
-
-		//ヒーププロパティ
-		D3D12_HEAP_PROPERTIES prop = {};
-		prop.Type = D3D12_HEAP_TYPE_UPLOAD;
-		prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		prop.CreationNodeMask = 1;
-		prop.VisibleNodeMask = 1;
-
-		//リソースの設定
-		D3D12_RESOURCE_DESC desc = {};
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Alignment = 0;
-		desc.Width = sizeof(Transform);
-		desc.Height = 1;
-		desc.DepthOrArraySize = 1;
-		desc.MipLevels = 1;
-		desc.Format = DXGI_FORMAT_UNKNOWN;
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		auto incrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		
-			for (auto i = 0; i < FrameCount; ++i)
-			{
-				for (int j = 0; j < 2; j++)
-				{
-					auto hr = m_device->CreateCommittedResource(
-						&prop,
-						D3D12_HEAP_FLAG_NONE,
-						&desc,
-						D3D12_RESOURCE_STATE_GENERIC_READ,
-						nullptr,
-						IID_PPV_ARGS(m_pCB[i].GetAddressOf())
-					);
-					if (FAILED(hr))
-					{
-						return false;
-					}
-					auto address = m_pCB[i]->GetGPUVirtualAddress();
-					auto handleCPU = m_pHeapCBV_SRV_UAV->GetCPUDescriptorHandleForHeapStart();
-					auto handleGPU = m_pHeapCBV_SRV_UAV->GetGPUDescriptorHandleForHeapStart();
-
-					handleCPU.ptr += incrementSize * i;
-					handleGPU.ptr += incrementSize * i;
-
-					m_CBV[i][j].HandleCPU = handleCPU;
-					m_CBV[i][j].HandleGPU = handleGPU;
-					m_CBV[i][j].Desc.BufferLocation = address;
-					m_CBV[i][j].Desc.SizeInBytes = sizeof(Transform);
-
-					m_device->CreateConstantBufferView(&m_CBV[i][j].Desc, handleCPU);
-
-					hr = m_pCB[i]->Map(0, nullptr, reinterpret_cast<void**>(&m_CBV[i][j].pBuffer));
-					if (FAILED(hr))
-					{
-					
-						return false;
-					}
-
-					auto eyePos = DirectX::XMVectorSet(0.0f, 0.0f, 6.0f, 0.0f);
-					auto targetPos = DirectX::XMVectorZero();
-					auto upward = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-					auto fovY = DirectX::XMConvertToRadians(37.5);
-					auto aspect = static_cast<float>(m_Width) / static_cast<float>(m_Height);
-
-					m_CBV[i][j].pBuffer->World = DirectX::XMMatrixIdentity();
-					m_CBV[i][j].pBuffer->View = DirectX::XMMatrixLookAtRH(eyePos, targetPos, upward);
-					m_CBV[i][j].pBuffer->Proj = DirectX::XMMatrixPerspectiveFovRH(fovY, aspect, 1.0f, 1000.0f);
-				}
-			}
-
-		
-
 	
-
-
-	}
+	
 	return true;
 }
 
@@ -1237,6 +1260,242 @@ void RenderManager::DrawImage()
 
 	
 }
+
+#include <cstdio>
+#include <string>
+
+bool RenderManager::PngImages(const wchar_t* filename, int& width, int& height, png_bytep& data)
+{
+    std::wstring texturePath;
+    if (!SearchFilePath(filename, texturePath))
+    {
+        return false;
+    }
+    FILE* fp = nullptr;
+    errno_t err = _wfopen_s(&fp, texturePath.c_str(), L"rb");
+    if (err != 0 || fp == nullptr)
+    {
+        return false;
+    }
+
+    png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+    if (png_ptr == nullptr)
+    {
+        fclose(fp);
+        return false;
+    }
+
+    png_info* info_ptr = png_create_info_struct(png_ptr);
+    if (info_ptr == nullptr)
+    {
+        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
+        fclose(fp);
+        return false;
+    }
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+        fclose(fp);
+        return false;
+    }
+
+    png_init_io(png_ptr, fp);
+    png_read_info(png_ptr, info_ptr);
+
+    width = png_get_image_width(png_ptr, info_ptr);
+    height = png_get_image_height(png_ptr, info_ptr);
+    png_byte bit_depth = png_get_bit_depth(png_ptr, info_ptr);
+    png_byte color_type = png_get_color_type(png_ptr, info_ptr);
+
+    if (bit_depth == 16)
+    {
+        png_set_strip_16(png_ptr);
+    }
+    if (color_type == PNG_COLOR_TYPE_PALETTE)
+    {
+        png_set_palette_to_rgb(png_ptr);
+    }
+    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
+    {
+        png_set_expand_gray_1_2_4_to_8(png_ptr);
+    }
+    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+    {
+        png_set_tRNS_to_alpha(png_ptr);
+    }
+    if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE)
+    {
+        png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
+    }
+    if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+    {
+        png_set_gray_to_rgb(png_ptr);
+    }
+    png_read_update_info(png_ptr, info_ptr);
+
+    png_bytep* row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
+
+    for (int i = 0; i < height; i++)
+    {
+        row_pointers[i] = (png_bytep)malloc(png_get_rowbytes(png_ptr, info_ptr));
+    }
+    png_read_image(png_ptr, row_pointers);
+    //画像データを一次元配列にコピー
+    data = (png_bytep)malloc(width * height * 4);
+    for (int i = 0; i < height; i++)
+    {
+        memcpy(data + width * 4 * i, row_pointers[i], width * 4);
+    }
+    fclose(fp);
+    for (int i = 0; i < height; i++)
+    {
+        free(row_pointers[i]);
+    }
+    free(row_pointers);
+    png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+    return true;
+}
+
+bool RenderManager::CreateTextureFromPng(const wchar_t* filename,int i)
+{
+	int width = 0;
+	int height = 0;
+	png_bytep data = nullptr;
+	if (!PngImages(filename, width, height, data))
+	{
+		return false;
+	}
+	//テクスチャ
+	D3D12_HEAP_PROPERTIES heapProp = {};	
+	heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+	heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	heapProp.CreationNodeMask = 1;
+	heapProp.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	desc.Alignment = 0;
+	desc.Width = width;
+	desc.Height = height;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	auto hr = m_device->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(texture.pResource.GetAddressOf())
+	);
+	if (FAILED(hr))
+	{
+		free(data);
+		return false;
+	}
+	//中間バッファ
+	D3D12_HEAP_PROPERTIES uploadHeapProp = {};
+	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+	uploadHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	uploadHeapProp.CreationNodeMask = 1;
+	uploadHeapProp.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC bufferDesc = {};	
+	bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	bufferDesc.Alignment = 0;
+	bufferDesc.Width = width * height * 4;
+	bufferDesc.Height = 1;
+	bufferDesc.DepthOrArraySize = 1;
+	bufferDesc.MipLevels = 1;
+	bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+	bufferDesc.SampleDesc.Count = 1;
+	bufferDesc.SampleDesc.Quality = 0;
+	bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	 
+	ComPtr<ID3D12Resource> uploadbuffer;
+	hr = m_device->CreateCommittedResource(
+		&uploadHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&bufferDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(uploadbuffer.GetAddressOf())
+	);
+	if (FAILED(hr))
+	{
+		free(data);
+		return false;
+	}
+	//中間バッファにデータをコピー
+	void* mappedData = nullptr;
+	hr = uploadbuffer->Map(0, nullptr, &mappedData);
+	if (FAILED(hr))
+	{
+		free(data);
+		return false;
+	}
+	memcpy(mappedData, data, width * height * 4);
+	uploadbuffer->Unmap(0, nullptr);
+
+	//テクスチャにデータを
+	D3D12_TEXTURE_COPY_LOCATION dst = {};
+	dst.pResource = texture.pResource.Get();
+	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	dst.SubresourceIndex = 0;
+
+	D3D12_TEXTURE_COPY_LOCATION src = {};
+	src.pResource = uploadbuffer.Get();
+	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	src.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	src.PlacedFootprint.Footprint.Width = width;
+	src.PlacedFootprint.Footprint.Height = height;
+	src.PlacedFootprint.Footprint.Depth = 1;
+	src.PlacedFootprint.Footprint.RowPitch = width * 4;
+
+	m_CommandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+	//textureをシェーダーリソースビューに変換
+	D3D12_RESOURCE_BARRIER barrier = {};	
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = texture.pResource.Get();
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+	m_CommandList->ResourceBarrier(1, &barrier);
+	//シェーダーリソースビューの作成
+	//D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+	//viewDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	//viewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	//viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	//viewDesc.Texture2D.MostDetailedMip = 0;
+	//viewDesc.Texture2D.MipLevels = 1;
+	//viewDesc.Texture2D.PlaneSlice = 0;
+	//viewDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+	//
+	//m_device->CreateShaderResourceView(texture.pResource.Get(), &viewDesc, texture.CPUDescriptor);
+
+	m_HeapSRVIndex[i] = CreateShaderResourceView(texture.pResource.Get());
+
+
+	textures.push_back(texture);
+
+	free(data);
+
+	return true;
+}
+
+
 void RenderManager::Render()
 {
 	DrawUI();
@@ -1286,6 +1545,8 @@ void RenderManager::Update()
 
 	m_CBV[m_FrameIndex][0].pBuffer->World = DirectX::XMMatrixTranslation(x,y,0);
 	m_CBV[m_FrameIndex][1].pBuffer->World = DirectX::XMMatrixTranslation(-2, 0, 0);
+
+	
 
 }
 

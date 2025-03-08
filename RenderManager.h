@@ -3,6 +3,7 @@
 #include"FIleUtil.h"
 #include<list>
 #include"Input.h"
+#include<libpng16/png.h>
 
 class Input;
 
@@ -62,9 +63,13 @@ public:
 	void TermWnd();
 	bool LoadImages(const wchar_t* filename,int i);
 
+	bool LoadDivImages(const wchar_t* filename, int Rows,int cols);
+
 	bool DivVertexs(int rows,int cols);
 
-	bool LoadVertexs();
+	bool HeapRTV_SRV_UAV();	
+
+	bool ConstantBufferViews();
 	bool Load();
 
 	bool VertexBuffer_05();
@@ -91,6 +96,10 @@ public:
 
 	bool DivImages();
 
+	bool PngImages(const wchar_t* filename, int& width, int& height, png_bytep& data);
+
+	bool CreateTextureFromPng(const wchar_t* filename,int i);
+
 
 	void SetPipelineState();
 	void SetResourceBarrier(ComPtr<ID3D12GraphicsCommandList>commandlist, ID3D12Resource* resource, D3D12_RESOURCE_STATES beforestate, D3D12_RESOURCE_STATES afterstate, unsigned int Subresource);
@@ -103,6 +112,7 @@ public:
 
 	unsigned int CreateShaderResourceView(ID3D12Resource* resource);
 
+	bool Images();
 
 
 public: 
@@ -160,6 +170,15 @@ public:
 	std::vector<DirectX::VertexPositionTexture> vertices;
 
 	std::vector<uint32_t> indices;
+
+	int m_CurrentFrame;
+	int m_TotalFrames;
+	int m_AnimationSpeed;
+	int m_ElapsedTime;
+
+	png_structp png_ptr=nullptr;
+	png_infop info_ptr=nullptr;
+	png_bytep* row_pointers=nullptr;
 	
 	static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 };
